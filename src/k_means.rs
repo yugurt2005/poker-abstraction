@@ -1,6 +1,8 @@
 use rand::prelude::*;
 use rayon::prelude::*;
 
+use crate::histogram::Histogram;
+
 fn find_centers<T: Clone>(k: usize, a: &Vec<T>, distance: fn(&T, &T) -> f32) -> Vec<T> {
     let mut rng = thread_rng();
 
@@ -22,26 +24,26 @@ fn find_centers<T: Clone>(k: usize, a: &Vec<T>, distance: fn(&T, &T) -> f32) -> 
     centers
 }
 
-pub fn k_means<T>(
+pub fn k_means(
     k: usize,
     m: usize,
-    a: Vec<T>,
-    combines: fn(Vec<&T>) -> T,
-    distance: fn(&T, &T) -> f32,
-) -> Vec<usize>
-where
-    T: Send + Sync + Clone + std::iter::Sum + 'static,
-{
+    a: Vec<Histogram>,
+    combines: fn(Option<Histogram>, &Histogram) -> Option<Histogram>,
+    distance: fn(&Histogram, &Histogram) -> f32,
+) -> Vec<usize> {
     let n = a.len();
 
     let mut best = f32::MAX;
     let mut vals = vec![0; n];
 
+    let mut cnt = 0.0;
     for _ in 0..m {
-        let mut centers: Vec<T> = find_centers(k, &a, distance);
+        let mut centers: Vec<Histogram> = find_centers(k, &a, distance);
 
         let mut pre = f32::MAX;
         loop {
+            cnt += 1.0;
+
             let (pos, dis): (Vec<usize>, Vec<f32>) = a
                 .par_iter()
                 .map(|h| {
@@ -71,27 +73,26 @@ where
             pre = dis;
 
             centers.par_iter_mut().enumerate().for_each(|(p, c)| {
-                let mut cluster = Vec::new();
+                let mut cluster = None;
 
                 for i in 0..n {
                     if pos[i] == p {
-                        cluster.push(&a[i]);
+                        cluster = combines(cluster, &a[i]);
                     }
                 }
 
-                if cluster.len() > 0 {
-                    *c = combines(cluster)
+                if let Some(x) = cluster {
+                    *c = x.norm();
                 }
             });
         }
-
-        // println!(
-        //     "convergence required {} iterations: produced distance of {}",
-        //     cnt, dis
-        // );
     }
 
-    // println!("BEST: {}", best);
+    println!(
+        "best = {} (convergence required {} iterations on average)",
+        best,
+        cnt / m as f64
+    );
 
     vals
 }
@@ -103,57 +104,6 @@ mod tests {
     use smallvec::{smallvec, SmallVec};
 
     use crate::histogram::*;
-
-    #[test]
-    fn test_k_means() {
-        let a: Vec<f32> = vec![1, 2, 3, 11, 12, 13, 21, 22, 23]
-            .iter()
-            .map(|&x| x as f32)
-            .collect();
-
-        let actual = k_means(
-            3,
-            5,
-            a,
-            |v| v.iter().map(|&&x| x).sum::<f32>() / v.len() as f32,
-            |&x, &y| (x - y).abs(),
-        );
-
-        assert!(actual[0] == actual[1]);
-        assert!(actual[1] == actual[2]);
-
-        assert!(actual[3] == actual[4]);
-        assert!(actual[4] == actual[5]);
-
-        assert!(actual[6] == actual[7]);
-        assert!(actual[7] == actual[8]);
-
-        println!("{:?}", actual);
-    }
-
-    #[test]
-    fn test_k_means_decimals() {
-        let a = vec![1.91, 13.79, 21.17, 2.35, 3.22, 11.61, 12.62, 22.67, 23.18];
-
-        let actual = k_means(
-            3,
-            5,
-            a,
-            |v| v.iter().map(|&&x| x).sum::<f32>() / v.len() as f32,
-            |&x, &y| (x - y).abs(),
-        );
-
-        assert!(actual[0] == actual[3]);
-        assert!(actual[3] == actual[4]);
-
-        assert!(actual[1] == actual[5]);
-        assert!(actual[5] == actual[6]);
-
-        assert!(actual[2] == actual[7]);
-        assert!(actual[7] == actual[8]);
-        
-        println!("{:?}", actual);
-    }
 
     #[test]
     fn test_k_means_histograms_mse() {

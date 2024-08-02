@@ -8,22 +8,17 @@ fn generate_histograms(n: usize) -> Vec<Histogram> {
     let mut rng = rand::thread_rng();
     (0..n)
         .map(|_| {
-            let mut h = Histogram::from(
+            Histogram::from(
                 (0..100)
                     .map(|_| rng.gen_range(0.0..1.0))
                     .collect::<SmallVec<[f32; 128]>>(),
-            );
-
-            h.norm();
-            h
+            )
         })
         .collect::<Vec<Histogram>>()
 }
 
 fn bench_1k(c: &mut Criterion) {
     let mut g = c.benchmark_group("K-Means 1k");
-
-    g.significance_level(0.1).sample_size(10);
 
     g.bench_function("K-Means: 1k Histograms (MSE)", |b| {
         b.iter_batched(

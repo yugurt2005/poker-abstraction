@@ -16,14 +16,13 @@ impl Histogram {
     }
 
     pub fn from(v: SmallVec<[f32; 128]>) -> Self {
-        let mut h = Self {
+        let h = Self {
             n: v.len(),
             s: v.iter().sum(),
             x: v,
         };
 
-        h.norm();
-        h
+        h.norm()
     }
 
     pub fn put(&mut self, i: usize, x: f32) {
@@ -35,11 +34,13 @@ impl Histogram {
         self.x[i] / self.s
     }
 
-    pub fn norm(&mut self) {
+    pub fn norm(mut self) -> Self {
         for i in 0..self.n {
             self.x[i] /= self.s;
         }
         self.s = 1.0;
+
+        self
     }
 }
 
@@ -90,16 +91,14 @@ pub fn mse(a: &Histogram, b: &Histogram) -> f32 {
     d.into()
 }
 
-pub fn avg(mut input: Vec<&Histogram>) -> Histogram {
-    let mut res = input.pop().unwrap().clone();
-
-    while !input.is_empty() {
-        let cur = input.pop().unwrap();
-        for i in 0..res.n {
-            res.put(i, cur.get(i));
+pub fn avg(input: Option<Histogram>, other: &Histogram) -> Option<Histogram> {
+    match input {
+        Some(mut h) => {
+            for i in 0..h.n {
+                h.put(i, other.get(i));
+            }
+            Some(h)
         }
+        None => Some(other.clone()),
     }
-
-    res.norm();
-    res
 }
