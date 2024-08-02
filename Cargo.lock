@@ -7,7 +7,9 @@ name = "abstraction"
 version = "0.1.0"
 dependencies = [
  "criterion",
+ "portable-atomic",
  "rand",
+ "rayon",
  "smallvec",
 ]
 
@@ -315,6 +317,12 @@ checksum = "81b30686a7d9c3e010b84284bdd26a29f2138574f52f5eb6f794fc0ad924e705"
 dependencies = [
  "plotters-backend",
 ]
+
+[[package]]
+name = "portable-atomic"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da544ee218f0d287a911e9c99a39a8c9bc8fcad3cb8db5959940044ecfc67265"
 
 [[package]]
 name = "ppv-lite86"

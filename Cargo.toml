@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+portable-atomic = { version = "1.7.0", features = ["float"] }
 rand = "0.8.5"
+rayon = "1.10.0"
 smallvec = "1.13.2"
 
 [dev-dependencies]

@@ -1,21 +1,15 @@
-use std::{
-    fmt::Debug,
-    sync::{Arc, Mutex},
-    thread,
-};
-
 use rand::prelude::*;
-
-const THREADS: usize = 1;
+use rayon::prelude::*;
 
 fn find_centers<T: Clone>(k: usize, a: &Vec<T>, distance: fn(&T, &T) -> f32) -> Vec<T> {
     let mut rng = thread_rng();
 
-    (1..k).fold(vec![a.choose(&mut rng).unwrap().clone()], |mut acc, _| {
-        acc.push(
+    let mut centers = vec![a.choose(&mut rng).unwrap().clone()];
+    for _ in 1..k {
+        centers.push(
             a.choose_weighted(&mut rng, |x| {
                 let mut best = f32::MAX;
-                for c in &acc {
+                for c in &centers {
                     best = f32::min(best, distance(x, c));
                 }
                 best
@@ -23,98 +17,72 @@ fn find_centers<T: Clone>(k: usize, a: &Vec<T>, distance: fn(&T, &T) -> f32) -> 
             .unwrap()
             .clone(),
         );
-        acc
-    })
+    }
+
+    centers
 }
 
 pub fn k_means<T>(
     k: usize,
     m: usize,
     a: Vec<T>,
-    merge: fn(Vec<T>) -> T,
+    combines: fn(Vec<&T>) -> T,
     distance: fn(&T, &T) -> f32,
 ) -> Vec<usize>
 where
-    T: Debug + Send + Sync + PartialEq + Clone + 'static,
+    T: Send + Sync + Clone + std::iter::Sum + 'static,
 {
     let n = a.len();
 
     let mut best = f32::MAX;
     let mut vals = vec![0; n];
 
-    let a = Arc::new(a);
     for _ in 0..m {
-        let mut c: Arc<Vec<T>> = Arc::new(find_centers(k, &a, distance));
+        let mut centers: Vec<T> = find_centers(k, &a, distance);
 
-        let positions: Arc<Vec<Mutex<usize>>> = Arc::new((0..n).map(Mutex::new).collect());
-
-        let mut cnt = 0;
-        let mut dis;
+        let mut pre = f32::MAX;
         loop {
-            cnt += 1;
-
-            let mut handles = Vec::new();
-            for t in 0..THREADS {
-                let a = a.clone();
-                let c = c.clone();
-
-                let positions = positions.clone();
-                handles.push(thread::spawn(move || {
-                    let mut d = 0.0;
-
-                    for i in (t..n).step_by(THREADS) {
-                        let mut v = f32::MAX;
-                        let mut p = 0;
-                        for j in 0..k {
-                            let x = distance(&a[i], &c[j]);
-                            if x < v {
-                                v = x;
-                                p = j;
-                            }
+            let (pos, dis): (Vec<usize>, Vec<f32>) = a
+                .par_iter()
+                .map(|h| {
+                    let mut d = f32::MAX;
+                    let mut p = 0;
+                    for j in 0..k {
+                        let x = distance(h, &centers[j]);
+                        if x < d {
+                            d = x;
+                            p = j;
                         }
-                        *positions[i].lock().unwrap() = p;
-
-                        d += v;
                     }
+                    (p, d)
+                })
+                .unzip();
 
-                    d
-                }));
-            }
+            let dis = dis.into_iter().sum::<f32>();
 
-            dis = 0.0;
-            for handle in handles {
-                dis += handle.join().unwrap();
-            }
-
-            let mut store: Vec<Vec<T>> = (0..k).map(|_| Vec::new()).collect();
-            for i in 0..n {
-                store[*positions[i].lock().unwrap()].push(a[i].clone());
-            }
-
-            let next = Arc::new(
-                store
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, x)| if x.is_empty() { c[i].clone() } else { merge(x) })
-                    .collect::<Vec<T>>(),
-            );
-
-            // for i in 0..k {
-            //     println!("{}: {:?}", i, c[i]);
-            // }
-
-            if next == c {
+            if dis == pre {
+                if dis < best {
+                    best = dis;
+                    vals = pos;
+                }
                 break;
             }
 
-            c = next;
+            pre = dis;
 
-            break;
-        }
+            centers.par_iter_mut().enumerate().for_each(|(p, c)| {
+                let mut cluster = Vec::new();
 
-        if dis < best {
-            best = dis;
-            vals = positions.iter().map(|x| *x.lock().unwrap()).collect();
+                for i in 0..n {
+                    if pos[i] == p {
+                        cluster.push(&a[i]);
+                    }
+                }
+
+                if cluster.len() > 0 {
+                    *c = combines(cluster)
+                }
+            });
         }
 
         // println!(
@@ -147,7 +115,7 @@ mod tests {
             3,
             5,
             a,
-            |v| v.iter().sum::<f32>() / v.len() as f32,
+            |v| v.iter().map(|&&x| x).sum::<f32>() / v.len() as f32,
             |&x, &y| (x - y).abs(),
         );
 
@@ -159,6 +127,8 @@ mod tests {
 
         assert!(actual[6] == actual[7]);
         assert!(actual[7] == actual[8]);
+
+        println!("{:?}", actual);
     }
 
     #[test]
@@ -169,7 +139,7 @@ mod tests {
             3,
             5,
             a,
-            |v| v.iter().sum::<f32>() / v.len() as f32,
+            |v| v.iter().map(|&&x| x).sum::<f32>() / v.len() as f32,
             |&x, &y| (x - y).abs(),
         );
 
@@ -181,6 +151,8 @@ mod tests {
 
         assert!(actual[2] == actual[7]);
         assert!(actual[7] == actual[8]);
+        
+        println!("{:?}", actual);
     }
 
     #[test]
@@ -210,6 +182,16 @@ mod tests {
         assert!(actual[4] == actual[5]);
 
         assert!(actual[6] == actual[7]);
+
+        assert!(
+            actual
+                .iter()
+                .collect::<std::collections::HashSet<_>>()
+                .len()
+                == 3
+        );
+
+        println!("{:?}", actual);
     }
 
     #[test]
@@ -239,5 +221,15 @@ mod tests {
         assert!(actual[4] == actual[5]);
 
         assert!(actual[6] == actual[7]);
+
+        assert!(
+            actual
+                .iter()
+                .collect::<std::collections::HashSet<_>>()
+                .len()
+                == 3
+        );
+
+        println!("{:?}", actual);
     }
 }

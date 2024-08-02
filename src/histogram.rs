@@ -1,8 +1,4 @@
-use std::fmt::Debug;
-
-use smallvec::{SmallVec, smallvec};
-
-const THRESHOLD: f32 = 1e-5;
+use smallvec::{smallvec, SmallVec};
 
 pub struct Histogram {
     n: usize,
@@ -47,12 +43,6 @@ impl Histogram {
     }
 }
 
-impl Debug for Histogram {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self.x)
-    }
-}
-
 impl Clone for Histogram {
     fn clone(&self) -> Self {
         Self {
@@ -63,14 +53,15 @@ impl Clone for Histogram {
     }
 }
 
-impl PartialEq for Histogram {
-    fn eq(&self, other: &Self) -> bool {
-        for i in 0..self.n {
-            if (self.get(i) - other.get(i)).abs() > THRESHOLD {
-                return false;
+impl std::iter::Sum for Histogram {
+    fn sum<I: Iterator<Item = Self>>(mut iter: I) -> Self {
+        let mut res = iter.next().unwrap();
+        for h in iter {
+            for i in 0..res.n {
+                res.put(i, h.get(i));
             }
         }
-        return true;
+        res
     }
 }
 
@@ -99,8 +90,8 @@ pub fn mse(a: &Histogram, b: &Histogram) -> f32 {
     d.into()
 }
 
-pub fn avg(mut input: Vec<Histogram>) -> Histogram {
-    let mut res = input.pop().unwrap();
+pub fn avg(mut input: Vec<&Histogram>) -> Histogram {
+    let mut res = input.pop().unwrap().clone();
 
     while !input.is_empty() {
         let cur = input.pop().unwrap();
