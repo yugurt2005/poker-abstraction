@@ -1,24 +1,28 @@
-use rand::prelude::*;
+use core::f32;
+
+use rand::{distributions::WeightedIndex, prelude::*};
 use rayon::prelude::*;
 
 use crate::histogram::Histogram;
 
-fn find_centers<T: Clone>(k: usize, a: &Vec<T>, distance: fn(&T, &T) -> f32) -> Vec<T> {
+fn generate_centers(
+    k: usize,
+    n: usize,
+    a: &Vec<Histogram>,
+    distance: fn(&Histogram, &Histogram) -> f32,
+) -> Vec<Histogram> {
     let mut rng = thread_rng();
 
     let mut centers = vec![a.choose(&mut rng).unwrap().clone()];
-    for _ in 1..k {
-        centers.push(
-            a.choose_weighted(&mut rng, |x| {
-                let mut best = f32::MAX;
-                for c in &centers {
-                    best = f32::min(best, distance(x, c));
-                }
-                best
-            })
-            .unwrap()
-            .clone(),
-        );
+
+    let mut weights: Vec<f32> = vec![f32::MAX; n];
+    for _ in 0..k {
+        weights
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, w)| *w = w.min(distance(&a[i], centers.last().unwrap())));
+
+        centers.push(a[WeightedIndex::new(&weights).unwrap().sample(&mut rng)].clone());
     }
 
     centers
@@ -34,19 +38,22 @@ pub fn k_means(
     let n = a.len();
 
     let mut best = f32::MAX;
-    let mut vals = vec![0; n];
+    let mut idxs = vec![0; n];
 
-    let mut cnt = 0.0;
     for _ in 0..m {
-        let mut centers: Vec<Histogram> = find_centers(k, &a, distance);
+        let mut centers: Vec<Histogram> = generate_centers(k, n, &a, distance);
 
+        println!("centers generated");
+
+        let mut cnt = 0;
         let mut pre = f32::MAX;
         loop {
-            cnt += 1.0;
+            cnt += 1;
 
             let (pos, dis): (Vec<usize>, Vec<f32>) = a
                 .par_iter()
-                .map(|h| {
+                .enumerate()
+                .map(|(_i, h)| {
                     let mut d = f32::MAX;
                     let mut p = 0;
                     for j in 0..k {
@@ -65,7 +72,7 @@ pub fn k_means(
             if dis == pre {
                 if dis < best {
                     best = dis;
-                    vals = pos;
+                    idxs = pos;
                 }
                 break;
             }
@@ -85,16 +92,17 @@ pub fn k_means(
                     *c = x.norm();
                 }
             });
+
+            println!("distance = {}", pre);
         }
+
+        println!(
+            "distance = {} (convergence required {} iterations)",
+            pre, cnt
+        );
     }
 
-    println!(
-        "best = {} (convergence required {} iterations on average)",
-        best,
-        cnt / m as f64
-    );
-
-    vals
+    idxs
 }
 
 #[cfg(test)]
