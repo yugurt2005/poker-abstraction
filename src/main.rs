@@ -6,7 +6,7 @@ use poker_abstraction::histogram::{avg, emd, mse, Histogram};
 use poker_abstraction::k_means::k_means;
 use poker_abstraction::tables;
 
-fn make_flops(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<usize> {
+fn make_flops(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u16> {
     println!("Getting Flops");
 
     let flop: Vec<Histogram> = tables::get(
@@ -23,9 +23,12 @@ fn make_flops(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<usize
     println!("Clustering Flops");
 
     k_means(count, 15, &flop, avg, emd)
+        .into_iter()
+        .map(|x| x as u16)
+        .collect()
 }
 
-fn make_turns(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<usize> {
+fn make_turns(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u16> {
     println!("Getting Turns");
 
     let turn: Vec<Histogram> = tables::get(
@@ -42,6 +45,9 @@ fn make_turns(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<usize
     println!("Clustering Turns");
 
     k_means(count, 15, &turn, avg, emd)
+        .into_iter()
+        .map(|x| x as u16)
+        .collect()
 }
 
 fn make_ochs(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<usize> {
@@ -65,7 +71,7 @@ fn make_rivers(
     path: &String,
     evaluator: &Rc<Evaluator>,
     ochs: &Rc<Vec<usize>>,
-) -> Vec<usize> {
+) -> Vec<u16> {
     println!("Getting Rivers");
 
     let river: Vec<Histogram> = tables::get(
@@ -80,6 +86,9 @@ fn make_rivers(
     println!("Clustering Rivers");
 
     k_means(count, 15, &river, avg, mse)
+        .into_iter()
+        .map(|x| x as u16)
+        .collect()
 }
 
 pub fn main() {

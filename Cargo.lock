@@ -382,7 +382,7 @@ dependencies = [
 [[package]]
 name = "poker_evaluator"
 version = "0.1.0"
-source = "git+https://github.com/yugurt2005/poker-evaluator?branch=master#0cf86722ad3a724e5aab63c55a45a1fc2f8395a8"
+source = "git+https://github.com/yugurt2005/poker-evaluator?branch=master#ceac5df28756830b07e155eadeeaa766a7d54d21"
 dependencies = [
  "poker_indexer",
  "smallvec",
