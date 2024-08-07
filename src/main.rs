@@ -83,7 +83,7 @@ fn make_rivers(
 }
 
 pub fn main() {
-    let evaluator = Rc::new(Evaluator::new("data/evaluator".to_string(), true));
+    let evaluator = Rc::new(Evaluator::new("data/evaluator".to_string()));
 
     let path: String = "data/histograms/".to_string();
 
