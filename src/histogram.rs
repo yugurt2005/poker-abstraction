@@ -1,9 +1,11 @@
-use smallvec::{smallvec, SmallVec};
+use serde::{Deserialize, Serialize};
+use textplots::{Chart, Plot, Shape};
 
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Histogram {
-    n: usize,
-    s: f32,
-    x: SmallVec<[f32; 128]>,
+    pub n: usize,
+    pub s: f32,
+    pub x: Vec<f32>,
 }
 
 impl Histogram {
@@ -11,22 +13,22 @@ impl Histogram {
         Self {
             n,
             s: 0.0,
-            x: smallvec![0.0; n],
+            x: vec![0.0; n],
         }
     }
 
-    pub fn from(v: SmallVec<[f32; 128]>) -> Self {
-        let h = Self {
+    pub fn from(v: Vec<f32>) -> Self 
+    {
+        Self {
             n: v.len(),
             s: v.iter().sum(),
-            x: v,
-        };
-
-        h.norm()
+            x: v.into_iter().map(f32::into).collect(),
+        }
     }
 
     pub fn put(&mut self, i: usize, x: f32) {
         self.s += x;
+
         self.x[i] += x;
     }
 
@@ -35,6 +37,10 @@ impl Histogram {
     }
 
     pub fn norm(mut self) -> Self {
+        if self.s == 0.0 {
+            return self;
+        }
+
         for i in 0..self.n {
             self.x[i] /= self.s;
         }
@@ -42,27 +48,20 @@ impl Histogram {
 
         self
     }
-}
 
-impl Clone for Histogram {
-    fn clone(&self) -> Self {
-        Self {
-            n: self.n,
-            s: self.s,
-            x: self.x.clone(),
-        }
-    }
-}
+    pub fn display(&self) {
+        println!("{:?}", self.x);
 
-impl std::iter::Sum for Histogram {
-    fn sum<I: Iterator<Item = Self>>(mut iter: I) -> Self {
-        let mut res = iter.next().unwrap();
-        for h in iter {
-            for i in 0..res.n {
-                res.put(i, h.get(i));
-            }
-        }
-        res
+        let points = self
+            .x
+            .iter()
+            .enumerate()
+            .map(|(i, &x)| (i as f32 + 1.0, x))
+            .collect::<Vec<_>>();
+
+        Chart::new(150, 50, 0.0, self.n as f32)
+            .lineplot(&Shape::Bars(&points))
+            .nice();
     }
 }
 

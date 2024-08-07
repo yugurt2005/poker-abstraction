@@ -1,66 +1,101 @@
 use core::f32;
 
-use rand::{distributions::WeightedIndex, prelude::*};
+use rand::prelude::*;
 use rayon::prelude::*;
 
 use crate::histogram::Histogram;
 
 fn generate_centers(
     k: usize,
-    n: usize,
-    a: &Vec<Histogram>,
+    points: &Vec<Histogram>,
     distance: fn(&Histogram, &Histogram) -> f32,
+    rng: &mut ThreadRng,
 ) -> Vec<Histogram> {
-    let mut rng = thread_rng();
+    let mut weights = vec![f32::MAX; points.len()];
 
-    let mut centers = vec![a.choose(&mut rng).unwrap().clone()];
-
-    let mut weights: Vec<f32> = vec![f32::MAX; n];
-    for _ in 0..k {
-        weights
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, w)| *w = w.min(distance(&a[i], centers.last().unwrap())));
-
-        centers.push(a[WeightedIndex::new(&weights).unwrap().sample(&mut rng)].clone());
+    let mut centers = vec![points.choose(rng).unwrap().clone()];
+    for _ in 1..k {
+        centers.push(
+            points[rand::distributions::WeightedIndex::new(
+                weights
+                    .par_iter_mut()
+                    .enumerate()
+                    .map(|(i, x)| {
+                        *x = x.min(distance(centers.last().unwrap(), &points[i]));
+                        *x
+                    })
+                    .collect::<Vec<f32>>(),
+            )
+            .unwrap()
+            .sample(rng)]
+            .clone(),
+        );
     }
 
     centers
 }
 
+fn calculate_center_distances(
+    centers: &Vec<Histogram>,
+    distance: fn(&Histogram, &Histogram) -> f32,
+) -> Vec<Vec<f32>> {
+    let k = centers.len();
+
+    let mut center_distances = vec![vec![0.0; k]; k];
+    for i in 0..k {
+        for j in 0..k {
+            if i < j {
+                let d = distance(&centers[i], &centers[j]);
+                center_distances[i][j] = d;
+                center_distances[j][i] = d;
+            }
+        }
+    }
+
+    center_distances
+}
+
 pub fn k_means(
     k: usize,
     m: usize,
-    a: Vec<Histogram>,
+    points: &Vec<Histogram>,
     combines: fn(Option<Histogram>, &Histogram) -> Option<Histogram>,
     distance: fn(&Histogram, &Histogram) -> f32,
 ) -> Vec<usize> {
-    let n = a.len();
+    let n = points.len();
 
     let mut best = f32::MAX;
     let mut idxs = vec![0; n];
 
+    println!("clustering {} points into {} clusters", n, k);
+
     for _ in 0..m {
-        let mut centers: Vec<Histogram> = generate_centers(k, n, &a, distance);
+        let mut centers: Vec<Histogram> = generate_centers(k, &points, distance, &mut thread_rng());
 
         println!("centers generated");
+
+        let mut cur = vec![0; n];
 
         let mut cnt = 0;
         let mut pre = f32::MAX;
         loop {
             cnt += 1;
 
-            let (pos, dis): (Vec<usize>, Vec<f32>) = a
+            let center_distances = calculate_center_distances(&centers, distance);
+
+            let (pos, dis): (Vec<usize>, Vec<f32>) = points
                 .par_iter()
                 .enumerate()
-                .map(|(_i, h)| {
-                    let mut d = f32::MAX;
-                    let mut p = 0;
+                .map(|(i, h)| {
+                    let mut p = cur[i];
+                    let mut d = distance(h, &centers[p]);
                     for j in 0..k {
-                        let x = distance(h, &centers[j]);
-                        if x < d {
-                            d = x;
-                            p = j;
+                        if j != p && center_distances[p][j] < 2.0 * d {
+                            let x = distance(h, &centers[j]);
+                            if x < d {
+                                d = x;
+                                p = j;
+                            }
                         }
                     }
                     (p, d)
@@ -77,14 +112,12 @@ pub fn k_means(
                 break;
             }
 
-            pre = dis;
-
             centers.par_iter_mut().enumerate().for_each(|(p, c)| {
                 let mut cluster = None;
 
                 for i in 0..n {
                     if pos[i] == p {
-                        cluster = combines(cluster, &a[i]);
+                        cluster = combines(cluster, &points[i]);
                     }
                 }
 
@@ -93,7 +126,10 @@ pub fn k_means(
                 }
             });
 
-            println!("distance = {}", pre);
+            pre = dis;
+            cur = pos;
+
+            println!("distance = {}", dis);
         }
 
         println!(
@@ -101,6 +137,8 @@ pub fn k_means(
             pre, cnt
         );
     }
+
+    println!("best distance = {}", best);
 
     idxs
 }
@@ -131,7 +169,7 @@ mod tests {
         })
         .collect();
 
-        let actual = k_means(3, 5, a, avg, mse);
+        let actual = k_means(3, 5, &a, avg, mse);
 
         assert!(actual[0] == actual[1]);
         assert!(actual[1] == actual[2]);
@@ -170,7 +208,7 @@ mod tests {
         })
         .collect();
 
-        let actual = k_means(3, 5, a, avg, emd);
+        let actual = k_means(3, 5, &a, avg, emd);
 
         assert!(actual[0] == actual[1]);
         assert!(actual[1] == actual[2]);
