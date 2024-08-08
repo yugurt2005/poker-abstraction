@@ -33,7 +33,12 @@ impl Histogram {
     }
 
     pub fn get(&self, i: usize) -> f32 {
-        self.x[i] / self.s
+        if self.s == 0.0 {
+            0.0
+        }
+        else {
+            self.x[i]
+        }
     }
 
     pub fn norm(mut self) -> Self {
@@ -75,7 +80,7 @@ pub fn emd(a: &Histogram, b: &Histogram) -> f32 {
         d += s.abs();
     }
 
-    d.into()
+    d
 }
 
 pub fn mse(a: &Histogram, b: &Histogram) -> f32 {
@@ -87,7 +92,7 @@ pub fn mse(a: &Histogram, b: &Histogram) -> f32 {
         d += delta * delta;
     }
 
-    d.into()
+    d
 }
 
 pub fn avg(input: Option<Histogram>, other: &Histogram) -> Option<Histogram> {

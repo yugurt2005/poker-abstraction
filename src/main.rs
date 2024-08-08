@@ -108,23 +108,23 @@ pub fn main() {
 
     let file: String = "data/tables/".to_string();
 
-    let _flops = tables::get(
-        &(file.clone() + "flops.bin"),
-        Box::new({
-            let strength = Rc::clone(&strength);
-            let path = path.clone();
-            move || make_flops(2197, &path, &strength)
-        }),
-    );
+    // let _flops = tables::get(
+    //     &(file.clone() + "flops.bin"),
+    //     Box::new({
+    //         let strength = Rc::clone(&strength);
+    //         let path = path.clone();
+    //         move || make_flops(2197, &path, &strength)
+    //     }),
+    // );
 
-    let _turns = tables::get(
-        &(file.clone() + "turns.bin"),
-        Box::new({
-            let strength = Rc::clone(&strength);
-            let path = path.clone();
-            move || make_turns(2197, &path, &strength)
-        }),
-    );
+    // let _turns = tables::get(
+    //     &(file.clone() + "turns.bin"),
+    //     Box::new({
+    //         let strength = Rc::clone(&strength);
+    //         let path = path.clone();
+    //         move || make_turns(2197, &path, &strength)
+    //     }),
+    // );
 
     let ochs = Rc::new(tables::get(
         &(file.clone() + "ochs.bin"),
