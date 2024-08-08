@@ -1,3 +1,4 @@
+use core::panic;
 use std::{
     io::{Read, Write},
     path::Path,
@@ -173,20 +174,13 @@ pub fn build_ochs_histograms(strength: &Vec<u16>) -> Vec<Histogram> {
 }
 
 pub fn generate_river_histograms(evaluator: &Evaluator, ochs: &Vec<usize>) -> Vec<Histogram> {
-    let mapper = Indexer::new(vec![2, 5]);
+    let size = ochs.iter().max().unwrap() + 1;
 
-    let mut count = vec![0; ochs.iter().max().unwrap() + 1];
-    for a in 0..52 {
-        for b in 0..52 {
-            if a < b {
-                count[ochs[mapper.index(smallvec![1 << a | 1 << b]) as usize]] += 1;
-            }
-        }
-    }
+    let mapper = Indexer::new(vec![2, 5]);
 
     let indexer = Indexer::new(vec![5]);
 
-    let mut histograms = vec![vec![0.0; count.len()]; mapper.count[1] as usize];
+    let mut histograms = vec![vec![0.0; size]; mapper.count[1] as usize];
     for i in 0..indexer.count[0] {
         let board = indexer.unindex(i, 0)[0];
 
@@ -207,9 +201,14 @@ pub fn generate_river_histograms(evaluator: &Evaluator, ochs: &Vec<usize>) -> Ve
 
         list.sort_unstable();
 
-        let mut used = vec![vec![0; 52]; count.len()];
+        let mut count = vec![0; size];
+        for &(_, _, hole, _) in &list {
+            count[ochs[hole]] += 1;
+        }
 
-        let mut sum = vec![0; count.len()];
+        let mut used = vec![vec![0; 52]; size];
+
+        let mut sum = vec![0; size];
         for x in list.chunk_by(|a, b| a.0 == b.0) {
             for &(_, _, hole, (a, b)) in x {
                 used[ochs[hole]][a as usize] += 1;
@@ -218,7 +217,7 @@ pub fn generate_river_histograms(evaluator: &Evaluator, ochs: &Vec<usize>) -> Ve
             }
 
             for &(_, index, hole, (a, b)) in x {
-                for k in 0..count.len() {
+                for k in 0..size {
                     histograms[index][k] = (sum[k] + (ochs[hole] == k) as u32
                         - used[k][a as usize]
                         - used[k][b as usize]) as f32;
@@ -235,9 +234,14 @@ pub fn generate_river_histograms(evaluator: &Evaluator, ochs: &Vec<usize>) -> Ve
         list.dedup_by_key(|(_, index, _, _)| index.clone());
 
         for (_, index, hole, (a, b)) in list {
-            for k in 0..count.len() {
-                histograms[index][k] /=
-                    (count[k] + (ochs[hole] == k) as u32 - used[k][a] - used[k][b]) as f32;
+            for k in 0..size {
+                let num = count[k] + (ochs[hole] == k) as u32 - (used[k][a] + used[k][b]) / 2;
+                if num != 0 {
+                    histograms[index][k] /= num as f32;
+                }
+                else {
+                    histograms[index][k] = 0.0;
+                }
             }
         }
     }
@@ -271,7 +275,7 @@ pub fn cluster_turns(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Ve
     println!("Getting Turns");
 
     let turn: Vec<Histogram> = get(
-        &(path.clone() + "turn.bin"),
+        path,
         Box::new({
             let input = Rc::clone(strength);
             move || generate_turn_histograms(&input)
@@ -293,7 +297,7 @@ pub fn cluster_ochs(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec
     println!("Getting OCHS");
 
     let ochs: Vec<Histogram> = get(
-        &(path.clone() + "ochs.bin"),
+        path,
         Box::new({
             let input = Rc::clone(strength);
             move || build_ochs_histograms(&input)
@@ -314,7 +318,7 @@ pub fn cluster_rivers(
     println!("Getting Rivers");
 
     let river: Vec<Histogram> = get(
-        &(path.clone() + "river.bin"),
+        path,
         Box::new({
             let evaluator = Rc::clone(&evaluator);
             let ochs = Rc::clone(&ochs);
@@ -331,6 +335,8 @@ pub fn cluster_rivers(
 }
 
 pub fn get_strengths(path: String, evaluator: &Rc<Evaluator>) -> Vec<u16> {
+    println!("Getting Strengths");
+
     get(
         &path,
         Box::new({
@@ -378,9 +384,7 @@ pub fn get_river_clusters(
 ) -> Vec<u16> {
     get(
         &file,
-        Box::new({
-            move || cluster_rivers(2197, &path, &evaluator, &ochs)
-        }),
+        Box::new({ move || cluster_rivers(2197, &path, &evaluator, &ochs) }),
     )
 }
 

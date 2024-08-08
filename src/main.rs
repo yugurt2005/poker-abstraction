@@ -1,9 +1,7 @@
-use rand::Rng;
 use std::rc::Rc;
 
 use poker_evaluator::Evaluator;
 
-use poker_abstraction::histogram::Histogram;
 use poker_abstraction::tables;
 
 fn display_cards(deal: Vec<u64>) {
@@ -40,12 +38,24 @@ pub fn main() {
 
     let file: String = "data/tables/".to_string();
 
-    let flop = tables::get_flop_clusters(file.clone() + "flop.bin", path.clone(), &strength);
-    let turn = tables::get_turn_clusters(file.clone() + "turn.bin", path.clone(), &strength);
-    let ochs = tables::get_ochs_clusters(file.clone() + "ochs.bin", path.clone(), &strength);
+    // let flop = tables::get_flop_clusters(
+    //     file.clone() + "flop.bin",
+    //     path.clone() + "flop.bin",
+    //     &strength,
+    // );
+    // let turn = tables::get_turn_clusters(
+    //     file.clone() + "turn.bin",
+    //     path.clone() + "turn.bin",
+    //     &strength,
+    // );
+    let ochs = tables::get_ochs_clusters(
+        file.clone() + "ochs.bin",
+        path.clone() + "ochs.bin",
+        &strength,
+    );
     let river = tables::get_river_clusters(
         file.clone() + "river.bin",
-        path,
+        path.clone() + "river.bin",
         Rc::clone(&evaluator),
         Rc::new(ochs),
     );
