@@ -44,7 +44,7 @@ fn make_turns(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u16> 
 
     println!("Clustering Turns");
 
-    k_means(count, 15, &turn, avg, emd)
+    k_means(count, 1, &turn, avg, emd)
         .into_iter()
         .map(|x| x as u16)
         .collect()
@@ -85,7 +85,7 @@ fn make_rivers(
 
     println!("Clustering Rivers");
 
-    k_means(count, 15, &river, avg, mse)
+    k_means(count, 1, &river, avg, mse)
         .into_iter()
         .map(|x| x as u16)
         .collect()

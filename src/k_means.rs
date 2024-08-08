@@ -5,7 +5,7 @@ use rayon::prelude::*;
 
 use crate::histogram::Histogram;
 
-fn generate_centers(
+pub fn generate_centers(
     k: usize,
     points: &Vec<Histogram>,
     distance: fn(&Histogram, &Histogram) -> f32,
@@ -15,21 +15,18 @@ fn generate_centers(
 
     let mut centers = vec![points.choose(rng).unwrap().clone()];
     for _ in 1..k {
+        weights.par_iter_mut().enumerate().for_each(|(i, x)| {
+            *x = x.min(distance(centers.last().unwrap(), &points[i]));
+        });
+
         centers.push(
-            points[rand::distributions::WeightedIndex::new(
-                weights
-                    .par_iter_mut()
-                    .enumerate()
-                    .map(|(i, x)| {
-                        *x = x.min(distance(centers.last().unwrap(), &points[i]));
-                        *x
-                    })
-                    .collect::<Vec<f32>>(),
-            )
-            .unwrap()
-            .sample(rng)]
+            points[rand::distributions::WeightedIndex::new(&weights)
+                .unwrap()
+                .sample(rng)]
             .clone(),
         );
+
+        centers.last().unwrap().display();
     }
 
     centers
@@ -165,7 +162,7 @@ mod tests {
         ]
         .into_iter()
         .map(|v: SmallVec<[i32; 128]>| {
-            Histogram::from(v.into_iter().map(|x: i32| x as f32).collect())
+            Histogram::from(v.into_iter().map(|x: i32| x as f32).collect()).norm()
         })
         .collect();
 
@@ -204,7 +201,7 @@ mod tests {
         ]
         .into_iter()
         .map(|v: SmallVec<[i32; 128]>| {
-            Histogram::from(v.into_iter().map(|x: i32| x as f32).collect())
+            Histogram::from(v.into_iter().map(|x: i32| x as f32).collect()).norm()
         })
         .collect();
 

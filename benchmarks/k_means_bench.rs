@@ -13,6 +13,7 @@ fn generate_histograms(n: usize, m: usize) -> Vec<Histogram> {
                     .map(|_| rng.gen_range(0.0..1.0))
                     .collect::<Vec<f32>>(),
             )
+            .norm()
         })
         .collect::<Vec<Histogram>>()
 }
@@ -123,5 +124,9 @@ fn bench_100k(_c: &mut Criterion) {
     println!("100k Histograms (EMD): {:?}", emd_start.elapsed());
 }
 
-criterion_group!(benches, bench_10k);
+fn bench_generate_centers(c: &mut Criterion) {
+    
+}
+
+criterion_group!(benches, bench_100k);
 criterion_main!(benches);
