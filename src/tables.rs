@@ -245,7 +245,7 @@ pub fn generate_river_histograms(evaluator: &Evaluator, ochs: &Vec<usize>) -> Ve
     histograms.into_iter().map(|x| Histogram::from(x)).collect()
 }
 
-pub fn make_flops(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u16> {
+pub fn cluster_flops(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u16> {
     println!("Getting Flops");
 
     let flop: Vec<Histogram> = get(
@@ -267,7 +267,7 @@ pub fn make_flops(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u
         .collect()
 }
 
-pub fn make_turns(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u16> {
+pub fn cluster_turns(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u16> {
     println!("Getting Turns");
 
     let turn: Vec<Histogram> = get(
@@ -283,13 +283,13 @@ pub fn make_turns(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u
 
     println!("Clustering Turns");
 
-    k_means(count, 1, &turn, agg, emd)
+    k_means(count, 5, &turn, agg, emd)
         .into_iter()
         .map(|x| x as u16)
         .collect()
 }
 
-pub fn make_ochs(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<usize> {
+pub fn cluster_ochs(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<usize> {
     println!("Getting OCHS");
 
     let ochs: Vec<Histogram> = get(
@@ -302,10 +302,10 @@ pub fn make_ochs(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<us
 
     println!("Clustering OCHS");
 
-    k_means(count, 75, &ochs, agg, emd)
+    k_means(count, 95, &ochs, agg, emd)
 }
 
-pub fn make_rivers(
+pub fn cluster_rivers(
     count: usize,
     path: &String,
     evaluator: &Rc<Evaluator>,
@@ -328,6 +328,60 @@ pub fn make_rivers(
         .into_iter()
         .map(|x| x as u16)
         .collect()
+}
+
+pub fn get_strengths(path: String, evaluator: &Rc<Evaluator>) -> Vec<u16> {
+    get(
+        &path,
+        Box::new({
+            let evaluator = Rc::clone(evaluator);
+            move || build_strengths(&evaluator)
+        }),
+    )
+}
+
+pub fn get_flop_clusters(file: String, path: String, strength: &Rc<Vec<u16>>) -> Vec<u16> {
+    get(
+        &file,
+        Box::new({
+            let strength = Rc::clone(strength);
+            move || cluster_flops(2197, &path, &strength)
+        }),
+    )
+}
+
+pub fn get_turn_clusters(file: String, path: String, strength: &Rc<Vec<u16>>) -> Vec<u16> {
+    get(
+        &file,
+        Box::new({
+            let strength = Rc::clone(strength);
+            move || cluster_turns(2197, &path, &strength)
+        }),
+    )
+}
+
+pub fn get_ochs_clusters(file: String, path: String, strength: &Rc<Vec<u16>>) -> Vec<usize> {
+    get(
+        &file,
+        Box::new({
+            let strength = Rc::clone(strength);
+            move || cluster_ochs(13, &path, &strength)
+        }),
+    )
+}
+
+pub fn get_river_clusters(
+    file: String,
+    path: String,
+    evaluator: Rc<Evaluator>,
+    ochs: Rc<Vec<usize>>,
+) -> Vec<u16> {
+    get(
+        &file,
+        Box::new({
+            move || cluster_rivers(2197, &path, &evaluator, &ochs)
+        }),
+    )
 }
 
 pub fn load<T: for<'d> Deserialize<'d>>(path: &String) -> T {
