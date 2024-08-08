@@ -80,10 +80,7 @@ impl Histogram {
 }
 
 pub fn emd(a: &Histogram, b: &Histogram) -> f32 {
-    if a.s != b.s {
-    println!("a: {}, b: {}", a.s, b.s);
-    }
-    assert!(a.s == b.s);
+    assert!((a.s - b.s).abs() < 1e-3);
 
     let n = std::cmp::min(a.n, b.n);
 

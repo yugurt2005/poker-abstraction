@@ -22,7 +22,7 @@ fn make_flops(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u16> 
 
     println!("Clustering Flops");
 
-    k_means(count, 1, &flop, agg, emd)
+    k_means(count, 20, &flop, agg, emd)
         .into_iter()
         .map(|x| x as u16)
         .collect()
@@ -39,7 +39,7 @@ fn make_turns(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u16> 
         }),
     )
     .into_iter()
-    .map(|x| Histogram::from(x.into_iter().map(|x| x.into()).collect()).norm())
+    .map(|x| Histogram::from(x.into_iter().map(|x| x.into()).collect()))
     .collect();
 
     println!("Clustering Turns");
@@ -139,69 +139,30 @@ pub fn main() {
         }),
     );
 
-    let indexer = poker_indexer::Indexer::new(vec![2, 3]);
-
-    let mut counts: Vec<u32> = vec![0; 2197];
-
-    for f in _flops.iter() {
-        counts[*f as usize] += 1;
-    }
-
-    println!("{:?}", counts[0..50].to_vec());
-
-    let res: Vec<(Vec<u64>, usize)> = _flops
-        .iter()
-        .enumerate()
-        .filter_map(|(i, &x)| {
-            if x == 1 {
-                Some((indexer.unindex(i as u32, 1).into_vec(), i))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let flop: Vec<Histogram> = tables::get(
-        &(path.clone() + "flop.bin"),
+    let _turns = tables::get(
+        &(file.clone() + "turns.bin"),
         Box::new({
-            let input = Rc::clone(&strength);
-            move || tables::generate_flop_histograms(&input)
+            let strength = Rc::clone(&strength);
+            let path = path.clone();
+            move || make_turns(2197, &path, &strength)
         }),
-    )
-    .into_iter()
-    .map(|x| Histogram::from(x.into_iter().map(|x| x.into()).collect()).norm())
-    .collect();
+    );
 
-    println!("{}", res.len());
-    for i in 0..10 {
-        display_cards(res[i].0.clone());
-        flop[res[i].1].display();
-    }
+    let ochs = Rc::new(tables::get(
+        &(file.clone() + "ochs.bin"),
+        Box::new({
+            let strength = Rc::clone(&strength);
+            let path = path.clone();
+            move || make_ochs(13, &path, &strength)
+        }),
+    ));
 
-    // let _turns = tables::get(
-    //     &(file.clone() + "turns.bin"),
-    //     Box::new({
-    //         let strength = Rc::clone(&strength);
-    //         let path = path.clone();
-    //         move || make_turns(2197, &path, &strength)
-    //     }),
-    // );
-
-    // let ochs = Rc::new(tables::get(
-    //     &(file.clone() + "ochs.bin"),
-    //     Box::new({
-    //         let strength = Rc::clone(&strength);
-    //         let path = path.clone();
-    //         move || make_ochs(13, &path, &strength)
-    //     }),
-    // ));
-
-    // let _river = tables::get(
-    //     &(file.clone() + "rivers.bin"),
-    //     Box::new({
-    //         let evaluator = Rc::clone(&evaluator);
-    //         let path = path.clone();
-    //         move || make_rivers(2197, &path, &evaluator, &ochs)
-    //     }),
-    // );
+    let _river = tables::get(
+        &(file.clone() + "rivers.bin"),
+        Box::new({
+            let evaluator = Rc::clone(&evaluator);
+            let path = path.clone();
+            move || make_rivers(2197, &path, &evaluator, &ochs)
+        }),
+    );
 }
