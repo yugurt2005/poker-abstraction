@@ -25,8 +25,6 @@ pub fn generate_centers(
                 .sample(rng)]
             .clone(),
         );
-
-        centers.last().unwrap().display();
     }
 
     centers
@@ -112,14 +110,17 @@ pub fn k_means(
             centers.par_iter_mut().enumerate().for_each(|(p, c)| {
                 let mut cluster = None;
 
+                let mut count = 0;
                 for i in 0..n {
                     if pos[i] == p {
                         cluster = combines(cluster, &points[i]);
+
+                        count += 1;
                     }
                 }
 
                 if let Some(x) = cluster {
-                    *c = x.norm();
+                    *c = x.average(count);
                 }
             });
 
@@ -166,7 +167,7 @@ mod tests {
         })
         .collect();
 
-        let actual = k_means(3, 5, &a, avg, mse);
+        let actual = k_means(3, 5, &a, agg, mse);
 
         assert!(actual[0] == actual[1]);
         assert!(actual[1] == actual[2]);
@@ -205,7 +206,7 @@ mod tests {
         })
         .collect();
 
-        let actual = k_means(3, 5, &a, avg, emd);
+        let actual = k_means(3, 5, &a, agg, emd);
 
         assert!(actual[0] == actual[1]);
         assert!(actual[1] == actual[2]);

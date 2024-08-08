@@ -29,7 +29,7 @@ fn bench_1k(c: &mut Criterion) {
                     black_box(10),
                     black_box(1),
                     black_box(&input),
-                    black_box(avg),
+                    black_box(agg),
                     black_box(mse),
                 )
             },
@@ -45,7 +45,7 @@ fn bench_1k(c: &mut Criterion) {
                     black_box(10),
                     black_box(1),
                     black_box(&input),
-                    black_box(avg),
+                    black_box(agg),
                     black_box(emd),
                 )
             },
@@ -69,7 +69,7 @@ fn bench_10k(c: &mut Criterion) {
                     black_box(100),
                     black_box(1),
                     black_box(&input),
-                    black_box(avg),
+                    black_box(agg),
                     black_box(mse),
                 )
             },
@@ -85,7 +85,7 @@ fn bench_10k(c: &mut Criterion) {
                     black_box(100),
                     black_box(1),
                     black_box(&input),
-                    black_box(avg),
+                    black_box(agg),
                     black_box(emd),
                 )
             },
@@ -104,7 +104,7 @@ fn bench_100k(_c: &mut Criterion) {
         black_box(1000),
         black_box(1),
         black_box(&mse_input),
-        black_box(avg),
+        black_box(agg),
         black_box(mse),
     );
 
@@ -117,7 +117,7 @@ fn bench_100k(_c: &mut Criterion) {
         black_box(1000),
         black_box(1),
         black_box(&emd_input),
-        black_box(avg),
+        black_box(agg),
         black_box(emd),
     );
 
@@ -125,7 +125,7 @@ fn bench_100k(_c: &mut Criterion) {
 }
 
 fn bench_generate_centers(c: &mut Criterion) {
-    
+
 }
 
 criterion_group!(benches, bench_100k);

@@ -41,6 +41,17 @@ impl Histogram {
         }
     }
 
+    pub fn average(mut self, n: usize) -> Self {
+        let n = n as f32;
+
+        self.s /= n;
+        for i in 0..self.n {
+            self.x[i] /= n;
+        }
+
+        self
+    }
+
     pub fn norm(mut self) -> Self {
         if self.s == 0.0 {
             return self;
@@ -55,8 +66,6 @@ impl Histogram {
     }
 
     pub fn display(&self) {
-        println!("{:?}", self.x);
-
         let points = self
             .x
             .iter()
@@ -64,13 +73,18 @@ impl Histogram {
             .map(|(i, &x)| (i as f32 + 1.0, x))
             .collect::<Vec<_>>();
 
-        Chart::new(150, 50, 0.0, self.n as f32)
+        Chart::new(100, 30, 0.0, self.n as f32)
             .lineplot(&Shape::Bars(&points))
             .nice();
     }
 }
 
 pub fn emd(a: &Histogram, b: &Histogram) -> f32 {
+    if a.s != b.s {
+    println!("a: {}, b: {}", a.s, b.s);
+    }
+    assert!(a.s == b.s);
+
     let n = std::cmp::min(a.n, b.n);
 
     let mut d = 0.0;
@@ -95,7 +109,7 @@ pub fn mse(a: &Histogram, b: &Histogram) -> f32 {
     d
 }
 
-pub fn avg(input: Option<Histogram>, other: &Histogram) -> Option<Histogram> {
+pub fn agg(input: Option<Histogram>, other: &Histogram) -> Option<Histogram> {
     match input {
         Some(mut h) => {
             for i in 0..h.n {
