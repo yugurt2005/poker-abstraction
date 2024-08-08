@@ -184,7 +184,7 @@ pub fn generate_river_histograms(evaluator: &Evaluator, ochs: &Vec<usize>) -> Ve
         }
     }
 
-    let indexer = Indexer::new(vec![5, 2]);
+    let indexer = Indexer::new(vec![5]);
 
     let mut histograms = vec![vec![0.0; count.len()]; mapper.count[1] as usize];
     for i in 0..indexer.count[0] {
@@ -205,7 +205,7 @@ pub fn generate_river_histograms(evaluator: &Evaluator, ochs: &Vec<usize>) -> Ve
             }
         }
 
-        list.sort();
+        list.sort_unstable();
 
         let mut used = vec![vec![0; 52]; count.len()];
 
@@ -231,6 +231,8 @@ pub fn generate_river_histograms(evaluator: &Evaluator, ochs: &Vec<usize>) -> Ve
                 sum[ochs[hole]] += 1;
             }
         }
+
+        list.dedup_by_key(|(_, index, _, _)| index.clone());
 
         for (_, index, hole, (a, b)) in list {
             for k in 0..count.len() {
