@@ -1,6 +1,7 @@
 use std::{
     io::{Read, Write},
     path::Path,
+    rc::Rc,
 };
 
 use rayon::prelude::*;
@@ -12,7 +13,8 @@ use smallvec::smallvec;
 use poker_evaluator::Evaluator;
 use poker_indexer::Indexer;
 
-use crate::histogram::Histogram;
+use crate::histogram::{agg, emd, mse, Histogram};
+use crate::k_means::k_means;
 
 const BUCKETS: usize = 47;
 
@@ -239,6 +241,91 @@ pub fn generate_river_histograms(evaluator: &Evaluator, ochs: &Vec<usize>) -> Ve
     }
 
     histograms.into_iter().map(|x| Histogram::from(x)).collect()
+}
+
+pub fn make_flops(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u16> {
+    println!("Getting Flops");
+
+    let flop: Vec<Histogram> = get(
+        &(path.clone() + "flop.bin"),
+        Box::new({
+            let input = Rc::clone(strength);
+            move || generate_flop_histograms(&input)
+        }),
+    )
+    .into_iter()
+    .map(|x| Histogram::from(x.into_iter().map(|x| x.into()).collect()))
+    .collect();
+
+    println!("Clustering Flops");
+
+    k_means(count, 20, &flop, agg, emd)
+        .into_iter()
+        .map(|x| x as u16)
+        .collect()
+}
+
+pub fn make_turns(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<u16> {
+    println!("Getting Turns");
+
+    let turn: Vec<Histogram> = get(
+        &(path.clone() + "turn.bin"),
+        Box::new({
+            let input = Rc::clone(strength);
+            move || generate_turn_histograms(&input)
+        }),
+    )
+    .into_iter()
+    .map(|x| Histogram::from(x.into_iter().map(|x| x.into()).collect()))
+    .collect();
+
+    println!("Clustering Turns");
+
+    k_means(count, 1, &turn, agg, emd)
+        .into_iter()
+        .map(|x| x as u16)
+        .collect()
+}
+
+pub fn make_ochs(count: usize, path: &String, strength: &Rc<Vec<u16>>) -> Vec<usize> {
+    println!("Getting OCHS");
+
+    let ochs: Vec<Histogram> = get(
+        &(path.clone() + "ochs.bin"),
+        Box::new({
+            let input = Rc::clone(strength);
+            move || build_ochs_histograms(&input)
+        }),
+    );
+
+    println!("Clustering OCHS");
+
+    k_means(count, 75, &ochs, agg, emd)
+}
+
+pub fn make_rivers(
+    count: usize,
+    path: &String,
+    evaluator: &Rc<Evaluator>,
+    ochs: &Rc<Vec<usize>>,
+) -> Vec<u16> {
+    println!("Getting Rivers");
+
+    let river: Vec<Histogram> = get(
+        &(path.clone() + "river.bin"),
+        Box::new({
+            let evaluator = Rc::clone(&evaluator);
+            let ochs = Rc::clone(&ochs);
+            move || generate_river_histograms(&evaluator, &ochs)
+        }),
+    );
+
+    println!("Clustering Rivers");
+
+    k_means(count, 1, &river, agg, mse)
+        .into_iter()
+        .map(|x| x as u16)
+        .collect()
 }
 
 pub fn load<T: for<'d> Deserialize<'d>>(path: &String) -> T {
