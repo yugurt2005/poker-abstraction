@@ -1,4 +1,3 @@
-use core::panic;
 use std::{
     io::{Read, Write},
     path::Path,
@@ -384,7 +383,7 @@ pub fn get_river_clusters(
 ) -> Vec<u16> {
     get(
         &file,
-        Box::new({ move || cluster_rivers(2197, &path, &evaluator, &ochs) }),
+        Box::new(move || cluster_rivers(2197, &path, &evaluator, &ochs)),
     )
 }
 

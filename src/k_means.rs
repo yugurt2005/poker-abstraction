@@ -127,7 +127,7 @@ pub fn k_means(
             pre = dis;
             cur = pos;
 
-            println!("distance = {}", dis);
+            println!("#{}: distance = {}", cnt, dis);
         }
 
         println!(
