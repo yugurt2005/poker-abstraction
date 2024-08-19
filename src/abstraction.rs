@@ -1,23 +1,18 @@
-use std::{fs::File, io::BufReader};
-
-use smallvec::SmallVec;
-
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
+use std::{fs::File, io::BufReader};
 
 use poker_indexer::Indexer;
 
 use crate::tables::load;
-
-pub const STACK: u32 = 6000;
-pub const BLIND: u32 = 200;
 
 #[derive(Serialize, Deserialize)]
 pub struct Node {
     pub i: u32,
     pub n: u32,
     pub r: u32,
-    pub a: char,
     pub t: u32,
+    pub a: char,
 
     pub s0: u32,
     pub s1: u32,
@@ -57,7 +52,7 @@ impl Abstraction {
     }
 
     pub fn size(&self) -> u32 {
-        self.tree[0].n
+        self.tree[0].i
     }
 
     pub fn root(&self) -> &Node {
@@ -78,5 +73,37 @@ impl Abstraction {
                 _ => panic!("invalid round"),
             }
             - 1
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use smallvec::smallvec;
+
+    use super::*;
+
+    #[test]
+    fn test_size() {
+        let abstraction = Abstraction::new(
+            "data/tables/".to_string(),
+            "data/tables/action-tree.json".to_string(),
+        );
+
+        let actions = vec![
+            1, 0, 2, 3
+        ];
+
+        let mut node = abstraction.root();
+        for action in actions {
+            node = abstraction.next(node, action);
+            print!("{}", node.a);
+        }
+        println!();
+
+        println!("r = {}; s0 = {}; s1 = {}", node.r, node.s0, node.s1);
+
+        let cards = smallvec![1 | 1 << 13, 1 << 26 | 1 << 12 | 1 << 11];
+
+        println!("index: {}", abstraction.index(cards, node));
     }
 }
