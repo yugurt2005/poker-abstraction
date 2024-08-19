@@ -56,6 +56,10 @@ impl Abstraction {
         self.tree[0].n
     }
 
+    pub fn root(&self) -> &Node {
+        &self.tree[0]
+    }
+
     pub fn next(&self, node: &Node, action: usize) -> &Node {
         &self.tree[node.children[action]]
     }
