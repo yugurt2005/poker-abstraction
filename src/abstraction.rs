@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fs::File, io::BufReader, rc::Rc};
+use std::{fs::File, io::BufReader};
 
 use smallvec::SmallVec;
 
@@ -16,7 +16,7 @@ pub struct Node {
     pub i: u32,
     pub n: u32,
     pub r: u32,
-    pub x: char,
+    pub a: char,
     pub t: u32,
 
     pub s0: u32,
@@ -70,12 +70,13 @@ impl Abstraction {
 
     pub fn index(&self, cards: SmallVec<[u64; 4]>, node: &Node) -> u32 {
         node.i
-            + match node.r {
+            - match node.r {
                 0 => self.indexer_0.index(cards),
                 1 => self.cluster_1[self.indexer_1.index(cards) as usize] as u32,
                 2 => self.cluster_2[self.indexer_2.index(cards) as usize] as u32,
                 3 => self.cluster_3[self.indexer_3.index(cards) as usize] as u32,
                 _ => panic!("invalid round"),
             }
+            - 1
     }
 }
