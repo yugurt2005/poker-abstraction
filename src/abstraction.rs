@@ -8,12 +8,16 @@ use poker_indexer::Indexer;
 
 use crate::tables::load;
 
+pub const STACK: u32 = 6000;
+pub const BLIND: u32 = 200;
+
 #[derive(Serialize, Deserialize)]
 pub struct Node {
     pub i: u32,
     pub n: u32,
     pub r: u32,
     pub x: char,
+    pub t: u32,
 
     pub s0: u32,
     pub s1: u32,
